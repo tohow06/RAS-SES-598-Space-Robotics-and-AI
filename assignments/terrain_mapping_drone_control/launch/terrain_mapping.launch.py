@@ -37,7 +37,7 @@ def generate_launch_description():
     # Launch PX4 SITL with x500_gimbal
     px4_sitl = ExecuteProcess(
         cmd=['make', 'px4_sitl', 'gz_x500_gimbal'],
-        cwd='/home/jdas/PX4-Autopilot',
+        cwd='/your/path/to/PX4-Autopilot',
         output='screen'
     )
     
@@ -69,15 +69,12 @@ def generate_launch_description():
             '/model/x500_gimbal_0/command/gimbal_pitch@std_msgs/msg/Float64@gz.msgs.Double',
             '/model/x500_gimbal_0/command/gimbal_yaw@std_msgs/msg/Float64@gz.msgs.Double',
             # Camera topics
-            '/camera@sensor_msgs/msg/Image@gz.msgs.Image',
-            '/depth_camera@sensor_msgs/msg/Image@gz.msgs.Image',
-            '/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-            # Removed problematic PointCloud topic
+            '/world/default/model/x500_gimbal_0/link/camera_link/sensor/camera/image@sensor_msgs/msg/Image@gz.msgs.Image',
+            '/world/default/model/x500_gimbal_0/link/camera_link/sensor/camera/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
         ],
         remappings=[
-            ('/camera', '/drone_camera'),
-            ('/depth_camera', '/drone_depth_camera'),
-            ('/camera_info', '/drone_camera_info')
+            ('/world/default/model/x500_gimbal_0/link/camera_link/sensor/camera/image', '/drone_camera/image_raw'),
+            ('/world/default/model/x500_gimbal_0/link/camera_link/sensor/camera/camera_info', '/drone_camera/camera_info')
         ],
         output='screen'
     )

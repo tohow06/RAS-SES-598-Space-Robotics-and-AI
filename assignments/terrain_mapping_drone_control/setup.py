@@ -37,7 +37,7 @@ setup(
         'console_scripts': [
             'spiral_trajectory = terrain_mapping_drone_control.spiral_trajectory:main',
             'feature_tracker = terrain_mapping_drone_control.feature_tracker:main',
-            'pose_visualizer = terrain_mapping_drone_control.pose_visualizer:main',
+            'visualizer = terrain_mapping_drone_control.visualizer:main',
         ],
     },
 ) 
