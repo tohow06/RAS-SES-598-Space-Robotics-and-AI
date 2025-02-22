@@ -38,6 +38,8 @@ setup(
             'spiral_trajectory = terrain_mapping_drone_control.spiral_trajectory:main',
             'feature_tracker = terrain_mapping_drone_control.feature_tracker:main',
             'visualizer = terrain_mapping_drone_control.visualizer:main',
+            'lawn_mower_trajectory_controller = terrain_mapping_drone_control.lawn_mower_trajectory_controller:main',
+            'lawn_mower_trajectory_controllerV2 = terrain_mapping_drone_control.lawn_mower_trajectory_controller_V2_untest:main',
         ],
     },
 ) 

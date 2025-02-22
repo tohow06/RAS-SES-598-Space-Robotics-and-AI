@@ -37,7 +37,7 @@ def generate_launch_description():
     # Launch PX4 SITL with x500_gimbal
     px4_sitl = ExecuteProcess(
         cmd=['make', 'px4_sitl', 'gz_x500_gimbal'],
-        cwd='/your/path/to/PX4-Autopilot',
+        cwd='/mnt/mydata/space_robot_ws/src/PX4-Autopilot',
         output='screen'
     )
     
