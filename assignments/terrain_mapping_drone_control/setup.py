@@ -30,16 +30,16 @@ setup(
             glob('models/cylinder_small/materials/*.*')),
         ('share/' + package_name + '/models/cylinder_small/materials/textures',
             glob('models/cylinder_small/materials/textures/*.*')),
-        ('lib/' + package_name, [
-            'terrain_mapping_drone_control/cylinder_landing_node.py',
-            'terrain_mapping_drone_control/aruco_tracker.py'
-        ]),
         ('share/' + package_name + '/models/cylinder_short',
             glob('models/cylinder_short/*.*')),
         ('share/' + package_name + '/models/cylinder_short/materials',
             glob('models/cylinder_short/materials/*.*')),
         ('share/' + package_name + '/models/cylinder_short/materials/textures',
             glob('models/cylinder_short/materials/textures/*.*')),
+        ('lib/' + package_name, [
+            'terrain_mapping_drone_control/cylinder_landing_node.py',
+            'terrain_mapping_drone_control/aruco_tracker.py'
+        ]),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -59,4 +59,4 @@ setup(
         ],
     },
     python_requires='>=3.8'
-) 
+)
