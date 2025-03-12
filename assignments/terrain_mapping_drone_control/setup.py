@@ -56,6 +56,7 @@ setup(
             'spiral_trajectory = terrain_mapping_drone_control.spiral_trajectory:main',
             'aruco_tracker = terrain_mapping_drone_control.aruco_tracker:main',
             'visualizer = terrain_mapping_drone_control.visualizer:main',
+            'camera_frame_processor = terrain_mapping_drone_control.camera_frame_processor:main',
         ],
     },
     python_requires='>=3.8'
