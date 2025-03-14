@@ -2,13 +2,16 @@
 
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from rosgraph_msgs.msg import Clock as ClockMsg
 from builtin_interfaces.msg import Time
+import tf2_ros
+from geometry_msgs.msg import TransformStamped
+import math
 
 class CameraFrameProcessor(Node):
     """
@@ -16,6 +19,8 @@ class CameraFrameProcessor(Node):
     1. Resizes RGB images to match depth image dimensions
     2. Ensures all camera frames have the correct frame_id
     3. Synchronizes timestamps using simulation clock
+    4. Republishes point cloud with correct frame_id
+    5. Publishes static transform between base_link and camera_link
     """
 
     def __init__(self):
@@ -27,20 +32,32 @@ class CameraFrameProcessor(Node):
         # Initialize simulation clock
         self.sim_time = None
         
-        # Subscribe to /clock topic for simulation time
-        self.clock_sub = self.create_subscription(
-            ClockMsg,
-            '/clock',
-            self.clock_callback,
-            10
-        )
+        # Parameters for controlling publish rate
+        self.declare_parameter('publish_rate', 30.0)  # Default 30Hz
+        self.publish_rate = self.get_parameter('publish_rate').value
+        
+        # Store the last processed RGB image
+        self.last_rgb_image = None
+        self.last_camera_info = None
+        self.last_depth_image = None
+        
+        # Create timer for republishing at desired rate
+        self.timer = self.create_timer(1.0/self.publish_rate, self.timer_callback)
         
         # Configure QoS profile
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
             durability=DurabilityPolicy.VOLATILE,
             history=HistoryPolicy.KEEP_LAST,
-            depth=10
+            depth=30
+        )
+        
+        # Subscribe to /clock topic for simulation time
+        self.clock_sub = self.create_subscription(
+            ClockMsg,
+            '/clock',
+            self.clock_callback,
+            qos_profile
         )
         
         # Subscribe to RGB image
@@ -67,6 +84,14 @@ class CameraFrameProcessor(Node):
             qos_profile
         )
         
+        # Subscribe to point cloud
+        self.pointcloud_sub = self.create_subscription(
+            PointCloud2,
+            '/drone/front_depth/points',
+            self.pointcloud_callback,
+            qos_profile
+        )
+        
         # Publishers
         self.rgb_processed_pub = self.create_publisher(
             Image,
@@ -87,6 +112,16 @@ class CameraFrameProcessor(Node):
             10
         )
         
+        # Add point cloud republisher
+        self.pointcloud_republish_pub = self.create_publisher(
+            PointCloud2,
+            '/drone/front_depth_processed/points',
+            10
+        )
+        
+        # Initialize TF2 static broadcaster
+        self.tf_static_broadcaster = tf2_ros.StaticTransformBroadcaster(self)
+        
         # Store depth image dimensions
         self.depth_width = 640  # Default
         self.depth_height = 480  # Default
@@ -98,8 +133,47 @@ class CameraFrameProcessor(Node):
         # Set the target frame_id for all camera messages
         self.target_frame_id = "base_link"
         
+        # Publish static transform
+        # self.publish_static_transform()
+        
         self.get_logger().info('Camera frame processor node initialized')
         self.get_logger().info(f'All camera frames will be set to: {self.target_frame_id}')
+        
+    def publish_static_transform(self):
+        """Publish static transform from base_link to camera_link."""
+        # Create transform message
+        transform = TransformStamped()
+        transform.header.stamp = self.get_current_timestamp()
+        transform.header.frame_id = "base_link"
+        transform.child_frame_id = "camera_link"
+        
+        # Set translation based on the provided pose
+        transform.transform.translation.x = 0.0
+        transform.transform.translation.y = -(0.0)
+        transform.transform.translation.z = -(0.15)
+        
+        # Set rotation based on the provided pose (0 1.5707963267948966 0)
+        # This is a rotation of 90 degrees (pi/2) around the Y axis
+        roll = 0.0
+        pitch = 1.5707963267948966  # 90 degrees in radians
+        yaw = 0.0
+        
+        # Convert Euler angles to quaternion
+        cy = math.cos(yaw * 0.5)
+        sy = math.sin(yaw * 0.5)
+        cp = math.cos(pitch * 0.5)
+        sp = math.sin(pitch * 0.5)
+        cr = math.cos(roll * 0.5)
+        sr = math.sin(roll * 0.5)
+        
+        transform.transform.rotation.w = cr * cp * cy + sr * sp * sy
+        transform.transform.rotation.x = sr * cp * cy - cr * sp * sy
+        transform.transform.rotation.y = -(cr * sp * cy + sr * cp * sy)
+        transform.transform.rotation.z = -(cr * cp * sy - sr * sp * cy)
+        
+        # Publish static transform
+        self.tf_static_broadcaster.sendTransform(transform)
+        self.get_logger().info(f"Published static transform from base_link to {self.target_frame_id}")
         
     def clock_callback(self, msg):
         """Callback for simulation clock updates."""
@@ -116,6 +190,26 @@ class CameraFrameProcessor(Node):
         else:
             # Use system time as fallback
             return self.get_clock().now().to_msg()
+    
+    def pointcloud_callback(self, msg):
+        """Callback for point cloud to republish with correct frame_id."""
+        # Republish point cloud with correct frame_id
+        # processed_msg = PointCloud2()
+        # processed_msg.header = msg.header
+        # processed_msg.header.frame_id = self.target_frame_id
+        # processed_msg.header.stamp = self.get_current_timestamp()
+        # processed_msg.height = msg.height
+        # processed_msg.width = msg.width
+        # processed_msg.fields = msg.fields
+        # processed_msg.is_bigendian = msg.is_bigendian
+        # processed_msg.point_step = msg.point_step
+        # processed_msg.row_step = msg.row_step
+        # processed_msg.data = msg.data
+        # processed_msg.is_dense = msg.is_dense
+        proc_msg = msg
+        proc_msg.header.frame_id = self.target_frame_id
+        
+        self.pointcloud_republish_pub.publish(proc_msg)
         
     def depth_callback(self, msg):
         """Callback for depth image to get its dimensions and republish with correct frame_id."""
@@ -126,23 +220,33 @@ class CameraFrameProcessor(Node):
             self.get_logger().info(f'Depth image dimensions: {self.depth_width}x{self.depth_height}')
         
         # Republish depth image with correct frame_id
-        processed_msg = Image()
-        processed_msg.header = msg.header
-        processed_msg.header.frame_id = self.target_frame_id
-        processed_msg.header.stamp = self.get_current_timestamp()
-        processed_msg.height = msg.height
-        processed_msg.width = msg.width
-        processed_msg.encoding = msg.encoding
-        processed_msg.is_bigendian = msg.is_bigendian
-        processed_msg.step = msg.step
-        processed_msg.data = msg.data
-        
-        self.depth_republish_pub.publish(processed_msg)
+        # processed_msg = Image()
+        # processed_msg.header = msg.header
+        # processed_msg.header.frame_id = self.target_frame_id
+        # processed_msg.header.stamp = self.get_current_timestamp()
+        # processed_msg.height = msg.height
+        # processed_msg.width = msg.width
+        # processed_msg.encoding = msg.encoding
+        # processed_msg.is_bigendian = msg.is_bigendian
+        # processed_msg.step = msg.step
+        # processed_msg.data = msg.data
+        proc_msg = msg
+        proc_msg.header.frame_id = self.target_frame_id
+        self.last_depth_image = proc_msg
             
     def camera_info_callback(self, msg):
         """Callback for camera info."""
         self.camera_info = msg
         
+    def timer_callback(self):
+        """Timer callback to publish the last processed RGB image at the desired rate."""
+        if self.last_rgb_image is not None and self.last_camera_info is not None:
+            
+            # Publish at the timer rate
+            self.rgb_processed_pub.publish(self.last_rgb_image)
+            self.camera_info_pub.publish(self.last_camera_info)
+            self.depth_republish_pub.publish(self.last_depth_image)
+
     def rgb_callback(self, msg):
         """Callback for RGB image to resize it and set the correct frame_id."""
         # Skip processing if we don't have depth dimensions or camera info yet
@@ -161,10 +265,10 @@ class CameraFrameProcessor(Node):
             processed_msg = self.cv_bridge.cv2_to_imgmsg(resized_image, encoding='bgr8')
             processed_msg.header = msg.header
             processed_msg.header.frame_id = self.target_frame_id
-            processed_msg.header.stamp = self.get_current_timestamp()
+            # processed_msg.header.stamp = self.get_current_timestamp()
             
-            # Publish processed image
-            self.rgb_processed_pub.publish(processed_msg)
+            # Store the processed image for republishing
+            self.last_rgb_image = processed_msg
             
             # Create updated camera info
             updated_camera_info = CameraInfo()
@@ -199,9 +303,8 @@ class CameraFrameProcessor(Node):
             
             # Copy rectification matrix (R)
             updated_camera_info.r = self.camera_info.r
-            
-            # Publish updated camera info
-            self.camera_info_pub.publish(updated_camera_info)
+            # Store the updated camera info
+            self.last_camera_info = updated_camera_info
             
         except Exception as e:
             self.get_logger().error(f'Error processing image: {str(e)}')

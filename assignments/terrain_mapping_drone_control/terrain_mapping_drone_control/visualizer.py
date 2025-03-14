@@ -12,6 +12,9 @@ import numpy as np
 from rosgraph_msgs.msg import Clock as ClockMsg
 from builtin_interfaces.msg import Time
 import tf2_ros
+from pytransform3d import rotations as pr
+from pytransform3d import transformations as pt
+
 
 class Visualizer(Node):
     """
@@ -33,10 +36,10 @@ class Visualizer(Node):
         self.vehicle_odometry = VehicleOdometry()
         self.setpoint_position = np.array([0.0, 0.0, 0.0])
         self.last_odom_update = 0.0
-        
+
         # Initialize simulation clock
         self.sim_time = None
-        
+
         # Subscribe to /clock topic for simulation time
         self.clock_sub = self.create_subscription(
             ClockMsg,
@@ -51,7 +54,7 @@ class Visualizer(Node):
         self.vehicle_path_msg.header.frame_id = "map"
         self.setpoint_path_msg = Path()
         self.setpoint_path_msg.header.frame_id = "map"
-        
+
         # Initialize TF2 broadcaster
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
 
@@ -72,7 +75,7 @@ class Visualizer(Node):
     def clock_callback(self, msg):
         """Callback for simulation clock updates."""
         self.sim_time = msg
-        
+
     def get_current_timestamp(self):
         """Get current timestamp from sim clock if available, otherwise use system time."""
         if self.sim_time is not None:
@@ -185,12 +188,18 @@ class Visualizer(Node):
 
         # Set covariance matrix [x, y, z, roll, pitch, yaw]
         covariance = np.zeros(36)
-        covariance[0] = max(float(self.vehicle_odometry.position_variance[0]), 1e-5)
-        covariance[7] = max(float(self.vehicle_odometry.position_variance[1]), 1e-5)
-        covariance[14] = max(float(self.vehicle_odometry.position_variance[2]), 1e-5)
-        covariance[21] = max(float(self.vehicle_odometry.orientation_variance[0]), 1e-5)
-        covariance[28] = max(float(self.vehicle_odometry.orientation_variance[1]), 1e-5)
-        covariance[35] = max(float(self.vehicle_odometry.orientation_variance[2]), 1e-5)
+        covariance[0] = max(
+            float(self.vehicle_odometry.position_variance[0]), 1e-5)
+        covariance[7] = max(
+            float(self.vehicle_odometry.position_variance[1]), 1e-5)
+        covariance[14] = max(
+            float(self.vehicle_odometry.position_variance[2]), 1e-5)
+        covariance[21] = max(
+            float(self.vehicle_odometry.orientation_variance[0]), 1e-5)
+        covariance[28] = max(
+            float(self.vehicle_odometry.orientation_variance[1]), 1e-5)
+        covariance[35] = max(
+            float(self.vehicle_odometry.orientation_variance[2]), 1e-5)
         pose_msg.pose.covariance = covariance.tolist()
 
         return pose_msg
@@ -235,70 +244,119 @@ class Visualizer(Node):
         # Timestamp will be set by the caller
         odom_msg.header.frame_id = frame_id
         odom_msg.child_frame_id = child_frame_id
-        
+
         # Set position (NED to ENU conversion)
-        odom_msg.pose.pose.position.x = float(self.vehicle_odometry.position[0])
-        odom_msg.pose.pose.position.y = float(-self.vehicle_odometry.position[1])
-        odom_msg.pose.pose.position.z = float(-self.vehicle_odometry.position[2])
-        
+        odom_msg.pose.pose.position.x = float(
+            self.vehicle_odometry.position[0])
+        odom_msg.pose.pose.position.y = float(
+            -self.vehicle_odometry.position[1])
+        odom_msg.pose.pose.position.z = float(
+            -self.vehicle_odometry.position[2])
+
         # Set orientation (NED to ENU conversion)
         odom_msg.pose.pose.orientation.w = float(self.vehicle_odometry.q[0])
         odom_msg.pose.pose.orientation.x = float(self.vehicle_odometry.q[1])
         odom_msg.pose.pose.orientation.y = float(-self.vehicle_odometry.q[2])
         odom_msg.pose.pose.orientation.z = float(-self.vehicle_odometry.q[3])
-        
+
         # Set velocity (NED to ENU conversion)
-        odom_msg.twist.twist.linear.x = float(self.vehicle_odometry.velocity[0])
-        odom_msg.twist.twist.linear.y = float(-self.vehicle_odometry.velocity[1])
-        odom_msg.twist.twist.linear.z = float(-self.vehicle_odometry.velocity[2])
-        
+        odom_msg.twist.twist.linear.x = float(
+            self.vehicle_odometry.velocity[0])
+        odom_msg.twist.twist.linear.y = float(
+            -self.vehicle_odometry.velocity[1])
+        odom_msg.twist.twist.linear.z = float(
+            -self.vehicle_odometry.velocity[2])
+
         # Set angular velocity (NED to ENU conversion)
-        odom_msg.twist.twist.angular.x = float(self.vehicle_odometry.angular_velocity[0])
-        odom_msg.twist.twist.angular.y = float(-self.vehicle_odometry.angular_velocity[1])
-        odom_msg.twist.twist.angular.z = float(-self.vehicle_odometry.angular_velocity[2])
-        
+        odom_msg.twist.twist.angular.x = float(
+            self.vehicle_odometry.angular_velocity[0])
+        odom_msg.twist.twist.angular.y = float(
+            -self.vehicle_odometry.angular_velocity[1])
+        odom_msg.twist.twist.angular.z = float(
+            -self.vehicle_odometry.angular_velocity[2])
+
         # Set covariance matrices
         pose_covariance = np.zeros(36)
-        pose_covariance[0] = max(float(self.vehicle_odometry.position_variance[0]), 1e-5)
-        pose_covariance[7] = max(float(self.vehicle_odometry.position_variance[1]), 1e-5)
-        pose_covariance[14] = max(float(self.vehicle_odometry.position_variance[2]), 1e-5)
-        pose_covariance[21] = max(float(self.vehicle_odometry.orientation_variance[0]), 1e-5)
-        pose_covariance[28] = max(float(self.vehicle_odometry.orientation_variance[1]), 1e-5)
-        pose_covariance[35] = max(float(self.vehicle_odometry.orientation_variance[2]), 1e-5)
+        pose_covariance[0] = max(
+            float(self.vehicle_odometry.position_variance[0]), 1e-5)
+        pose_covariance[7] = max(
+            float(self.vehicle_odometry.position_variance[1]), 1e-5)
+        pose_covariance[14] = max(
+            float(self.vehicle_odometry.position_variance[2]), 1e-5)
+        pose_covariance[21] = max(
+            float(self.vehicle_odometry.orientation_variance[0]), 1e-5)
+        pose_covariance[28] = max(
+            float(self.vehicle_odometry.orientation_variance[1]), 1e-5)
+        pose_covariance[35] = max(
+            float(self.vehicle_odometry.orientation_variance[2]), 1e-5)
 
         odom_msg.pose.covariance = pose_covariance.tolist()
-        
+
         # Set twist covariance (using velocity variance if available)
         twist_covariance = np.zeros(36)
         if hasattr(self.vehicle_odometry, 'velocity_variance'):
-            twist_covariance[0] = max(float(self.vehicle_odometry.velocity_variance[0]), 1e-5)
-            twist_covariance[7] = max(float(self.vehicle_odometry.velocity_variance[1]), 1e-5)
-            twist_covariance[14] = max(float(self.vehicle_odometry.velocity_variance[2]), 1e-5)
+            twist_covariance[0] = max(
+                float(self.vehicle_odometry.velocity_variance[0]), 1e-5)
+            twist_covariance[7] = max(
+                float(self.vehicle_odometry.velocity_variance[1]), 1e-5)
+            twist_covariance[14] = max(
+                float(self.vehicle_odometry.velocity_variance[2]), 1e-5)
             twist_covariance[21] = 1.0
             twist_covariance[28] = 1.0
             twist_covariance[35] = 1.0
         odom_msg.twist.covariance = twist_covariance.tolist()
-        
+
         return odom_msg
-        
+
     def create_transform_message(self, frame_id, child_frame_id):
         """Create transform message from odometry data."""
         transform = TransformStamped()
         # Timestamp will be set by the caller
-        transform.header.frame_id = frame_id
-        transform.child_frame_id = child_frame_id
-        
-        # Set translation (NED to ENU conversion)
-        transform.transform.translation.x = float(self.vehicle_odometry.position[0])
-        transform.transform.translation.y = float(-self.vehicle_odometry.position[1])
-        transform.transform.translation.z = float(-self.vehicle_odometry.position[2])
-        
-        # Set rotation (NED to ENU conversion)
-        transform.transform.rotation.w = float(self.vehicle_odometry.q[0])
-        transform.transform.rotation.x = float(self.vehicle_odometry.q[1])
-        transform.transform.rotation.y = float(-self.vehicle_odometry.q[2])
-        transform.transform.rotation.z = float(-self.vehicle_odometry.q[3])
-        
+        transform.header.frame_id = frame_id  # odom
+        transform.child_frame_id = child_frame_id  # base_link
+
+        # Create a transformation matrix from the vehicle odometry
+        # First, create a rotation matrix from quaternion
+        q = np.array([
+            self.vehicle_odometry.q[0],  # w
+            self.vehicle_odometry.q[1],  # x
+            self.vehicle_odometry.q[2],  # y (NED to ENU conversion)
+            self.vehicle_odometry.q[3]  # z (NED to ENU conversion)
+        ])
+
+        # Create position vector (NED to ENU conversion)
+        position = np.array([
+            self.vehicle_odometry.position[0],
+            self.vehicle_odometry.position[1],
+            self.vehicle_odometry.position[2]
+        ])
+
+        base2newbase = pt.transform_from(pr.matrix_from_euler(
+            [np.pi, 0, 0], 0, 1, 2, False), [0, 0, 0])
+
+        # Create transformation matrix using pytransform3d
+        rotation_matrix = pr.matrix_from_quaternion(q)
+        odom2base = pt.transform_from(rotation_matrix, position)
+
+        newodom2odom = pt.transform_from(pr.matrix_from_euler(
+            [np.pi/2, 0, np.pi/2], 2, 1, 0, False), [0, 0, 0])
+
+        newodom2newbase = pt.concat(
+            pt.concat(newodom2odom, odom2base), base2newbase)
+
+        transform.transform.translation.x = newodom2newbase[0, 3]
+        transform.transform.translation.y = newodom2newbase[1, 3]
+        transform.transform.translation.z = newodom2newbase[2, 3]
+
+        transform.transform.rotation.w = pr.quaternion_from_matrix(
+            newodom2newbase[:3, :3])[0]
+        transform.transform.rotation.x = pr.quaternion_from_matrix(
+            newodom2newbase[:3, :3])[1]
+        transform.transform.rotation.y = pr.quaternion_from_matrix(
+            newodom2newbase[:3, :3])[2]
+        transform.transform.rotation.z = pr.quaternion_from_matrix(
+            newodom2newbase[:3, :3])[3]
+
         return transform
 
     def cmdloop_callback(self):
@@ -306,15 +364,15 @@ class Visualizer(Node):
         # Skip if we haven't received any clock messages yet
         if self.sim_time is None:
             return
-            
+
         # Get current timestamp once to ensure all messages use the same timestamp
         current_timestamp = self.get_current_timestamp()
-        
+
         # Publish vehicle pose and path
         vehicle_pose_msg = self.create_pose_with_covariance("map")
         vehicle_pose_msg.header.stamp = current_timestamp
         self.pose_pub.publish(vehicle_pose_msg)
-        
+
         self.vehicle_path_msg.header.stamp = current_timestamp
         self.append_vehicle_path(vehicle_pose_msg)
         self.vehicle_path_pub.publish(self.vehicle_path_msg)
@@ -330,24 +388,25 @@ class Visualizer(Node):
         velocity_msg = self.create_velocity_marker("map", 1)
         velocity_msg.header.stamp = current_timestamp
         self.velocity_pub.publish(velocity_msg)
-        
+
         # Publish odometry message
         odom_msg = self.create_odom_message("odom", "base_link")
         odom_msg.header.stamp = current_timestamp
         self.odom_pub.publish(odom_msg)
-        
+
         # Publish TF transform
         transform_msg = self.create_transform_message("odom", "base_link")
         transform_msg.header.stamp = current_timestamp
         self.tf_broadcaster.sendTransform(transform_msg)
-        
-        # Also publish map to odom transform (identity transform)
-        map_to_odom = TransformStamped()
-        map_to_odom.header.stamp = current_timestamp
-        map_to_odom.header.frame_id = "map"
-        map_to_odom.child_frame_id = "odom"
-        map_to_odom.transform.rotation.w = 1.0  # Identity quaternion
-        self.tf_broadcaster.sendTransform(map_to_odom)
+
+        # mm = TransformStamped()
+        # mm.header.frame_id = "map"
+        # mm.child_frame_id = "odom"
+        # mm.header.stamp = current_timestamp
+        # mm.transform.translation.x = 0.1
+        # mm.transform.translation.y = 0.2
+        # mm.transform.translation.z = 0.0
+        # self.tf_broadcaster.sendTransform(mm)
 
     def trajectory_setpoint_callback(self, msg):
         """Callback for trajectory setpoint."""
