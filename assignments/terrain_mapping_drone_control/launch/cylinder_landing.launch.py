@@ -13,16 +13,16 @@ def generate_launch_description():
 
     # Get the package share directory
     pkg_share = get_package_share_directory('terrain_mapping_drone_control')
-
+        
     # Set Gazebo model and resource paths
     gz_model_path = os.path.join(pkg_share, 'models')
 
     # # Set initial drone pose
     os.environ['PX4_GZ_MODEL_POSE'] = "0,0,0.1,0,0,0"
-
+    
     # Add launch argument for PX4-Autopilot path
     px4_autopilot_path = LaunchConfiguration('px4_autopilot_path')
-
+    
     # Launch PX4 SITL with x500_depth
     px4_sitl = ExecuteProcess(
         cmd=['make', 'px4_sitl', 'gz_x500_depth_mono'],
@@ -54,8 +54,7 @@ def generate_launch_description():
         package='ros_gz_sim',
         executable='create',
         arguments=[
-            '-file', os.path.join(gz_model_path,
-                                  'cylinder_short', 'model.sdf'),
+            '-file', os.path.join(gz_model_path, 'cylinder_short', 'model.sdf'),
             '-name', 'cylinder_back',
             '-x', '-5',    # 5 meters behind the drone
             '-y', '0',     # centered on y-axis
@@ -80,13 +79,13 @@ def generate_launch_description():
             # Front RGB Camera
             '/rgb_camera@sensor_msgs/msg/Image[gz.msgs.Image',
             '/rgb_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-
+            
             # Front Depth Camera
             '/depth_camera@sensor_msgs/msg/Image[gz.msgs.Image',
             # '/depth_camera/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
             '/depth_camera/points@sensor_msgs/msg/PointCloud2[gz.msgs.PointCloudPacked',
             '/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
-
+            
             # Down Mono Camera
             '/mono_camera@sensor_msgs/msg/Image[gz.msgs.Image',
             '/mono_camera/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo',
@@ -99,13 +98,13 @@ def generate_launch_description():
             # Front RGB Camera remappings
             ('/rgb_camera', '/drone/front_rgb'),
             ('/rgb_camera/camera_info', '/drone/front_rgb/camera_info'),
-
+            
             # Front Depth Camera remappings
             ('/depth_camera', '/drone/front_depth'),
             # ('/depth_camera/depth_image', '/drone/front_depth/depth'),
             ('/depth_camera/points', '/drone/front_depth/points'),
             ('/camera_info', '/drone/front_depth/camera_info'),
-
+            
             # Down Mono Camera remappings
             ('/mono_camera', '/drone/down_mono'),
             ('/mono_camera/camera_info', '/drone/down_mono/camera_info'),
@@ -123,8 +122,7 @@ def generate_launch_description():
             description='Use simulation (Gazebo) clock if true'),
         DeclareLaunchArgument(
             'px4_autopilot_path',
-            default_value=os.environ.get(
-                'HOME', '/home/' + os.environ.get('USER', 'user')) + '/PX4-Autopilot',
+            default_value=os.environ.get('HOME', '/home/' + os.environ.get('USER', 'user')) + '/PX4-Autopilot',
             description='Path to PX4-Autopilot directory'),
         px4_sitl,
         TimerAction(
